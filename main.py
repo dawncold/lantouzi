@@ -7,10 +7,19 @@ import requests
 from pyquery import PyQuery as pq
 from lxml import etree
 
+if not os.path.exists('posts'):
+    os.mkdir('posts')
 
-def build_index():
+def load_existing_links():
+    if not os.path.exists('posts/page-links'):
+        return []
     with open('posts/page-links') as f:
         existing_links = [line.strip() for line in f.readlines()]
+    return existing_links
+
+def build_index():
+    print('building post links...')
+    existing_links = load_existing_links()
     news_list_url = 'https://ios.lantouzi.com/post'
     page_num = 1
     while 1:
@@ -18,7 +27,6 @@ def build_index():
         d = pq(etree.HTML(resp.content))
         links = d('.news-list a').map(lambda i, e: pq(e).attr('href'))
         if not links:
-            print('no more links')
             break
         new_links = set(links) - set(existing_links)
         if not new_links:
@@ -30,6 +38,7 @@ def build_index():
         page_num += 1
 
 def crawl_post_content(post_url):
+    print(f'crawl: {post_url}')
     resp = requests.get(post_url)
     d = pq(etree.HTML(resp.content))
     content = d('p.MsoNormal').text()
@@ -38,14 +47,13 @@ def crawl_post_content(post_url):
         f.write(content)
 
 def extract_structure_data(content):
+    print('extracting structure data...')
     total_search = re.search('(\d+(,\d+)*\.?\d+)元', content)
     if not total_search:
-        print(f'can not extract total: {content}')
         return
     total = total_search.group(1)
     time_search = re.findall('(\d\d\d\d年\d\d月\d\d日\d\d点\d\d分)', content)
     if not time_search:
-        print(f'can not extract dates: {content}')
         return
     start_time, end_time = time_search
 
@@ -60,6 +68,7 @@ def sort_structure_data():
         f.writelines(lines)
 
 def extract_year(year):
+    print(f'extracting year: {year}')
     with open('posts/structure-data') as f:
         lines = f.readlines()
     date2total = {}
@@ -68,7 +77,6 @@ def extract_year(year):
             continue
         line = line.strip()
         if f'{year}年' not in line:
-            print(f'skip not match year: {line[:30]}...')
             continue
         start_time_str, end_time_str, total_str = line.split()
         start_date = datetime.datetime.strptime(start_time_str, '%Y年%m月%d日%H点%M分').date()
@@ -90,11 +98,8 @@ def extract_year(year):
 
 if __name__ == '__main__':
     build_index()
-
-    with open('posts/page-links') as f:
-        existing_links = [line.strip() for line in f.readlines()]
     
-    for link in existing_links:
+    for link in load_existing_links():
         post_id = int(link.split('/')[-1])
         if os.path.exists(f'posts/post-{post_id}'):
             continue
@@ -104,7 +109,7 @@ if __name__ == '__main__':
         os.remove('posts/structure-data')
 
     for post_content_name in os.listdir('posts'):
-        if not os.path.isfile(f'posts/{post_content_name}'):
+        if not os.path.isfile(f'posts/{post_content_name}') or not post_content_name.startswith('post-'):
             continue
         with open(f'posts/{post_content_name}') as f:
             content = f.read()
