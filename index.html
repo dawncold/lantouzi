@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title></title>
+</head>
+
+<body>
+    <div id="main" style="width: 90%;height:400px;"></div>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script type="text/javascript" src="echarts.min.js"></script>
+    <script type="text/javascript">
+        axios.get('stats-year-2020.json').then(resp => {
+            const stats = resp.data.stats;
+            const dates = stats.map(s => s[0]);
+            const totals = stats.map(s => s[1]);
+            var myChart = echarts.init(document.getElementById('main'));
+            option = {
+                title: {
+                    text: '懒投资2020年回款金额'
+                },
+                tooltip: {
+                    trigger: 'axis'
+                },
+                xAxis: {
+                    type: 'time'
+                },
+                yAxis: {
+                    type: 'value'
+                },
+                series: [{
+                    data: stats,
+                    type: 'line',
+                    smooth: true
+                }]
+            };
+            myChart.setOption(option);
+        });
+    </script>
+</body>
+
+</html>
