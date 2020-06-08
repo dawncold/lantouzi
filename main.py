@@ -3,6 +3,7 @@ import os.path
 import re
 import datetime
 import csv
+import json
 import requests
 from pyquery import PyQuery as pq
 from lxml import etree
@@ -81,7 +82,7 @@ def extract_year(year):
         start_time_str, end_time_str, total_str = line.split()
         start_date = datetime.datetime.strptime(start_time_str, '%Y年%m月%d日%H点%M分').date()
         end_date = datetime.datetime.strptime(end_time_str, '%Y年%m月%d日%H点%M分').date()
-        date2total[end_date.strftime('%Y-%m-%d')] = total_str
+        date2total[end_date.strftime('%Y-%m-%d')] = total_str.replace(',', '')
     
     stat_date = datetime.date(year, 1, 1)
     stats = []
@@ -89,12 +90,14 @@ def extract_year(year):
         date_str = stat_date.strftime('%Y-%m-%d')
         stats.append((date_str, date2total.get(date_str, '')))
         stat_date += datetime.timedelta(days=1)
-        if stat_date.year > year:
+        if stat_date.year > year or stat_date > datetime.date.today():
             break
     with open(f'posts/stats-year-{year}.csv', 'w') as csvfile:
-        writer = csv.writer(csvfile, delimiter=',', quotechar="'", quoting=csv.QUOTE_MINIMAL)
+        writer = csv.writer(csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         writer.writerow(['date', 'total'])
         writer.writerows(stats)
+    with open(f'posts/stats-year-{year}.json', 'w') as f:
+        f.write(json.dumps({'stats': stats}))
 
 if __name__ == '__main__':
     build_index()
